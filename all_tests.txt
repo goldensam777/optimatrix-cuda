@@ -1,0 +1,58 @@
+Voici le récapitulatif complet des tests et l'historique des difficultés rencontrées.
+
+---
+
+## Résultats des tests
+
+| Phase | Composant | Résultat |
+|---|---|---|
+| 1A | Activations (ReLU, Sigmoid, SiLU, Softplus) | **4/4 OK** |
+| 1B | Hadamard | **1/1 OK** |
+| 2 | GEMV + GEMM | **7/7 OK** |
+| 3A | Conv1D depthwise causale | **5/5 OK** |
+| 3B | Scan 1D (séquentiel + Blelloch) | **0/5 FAIL** |
+| 4 | Scan 2D (4 stratégies) | **12/16 OK** (4 FAIL à 16x16 D=32) |
+| 5 | MambaBlock forward complet | **3/3 OK** |
+
+**Total : 32/38 tests OK**
+
+---
+
+## Historique des difficultés et modifications
+
+### 1. `make` introuvable (env bash)
+**Symptôme :** `make: command not found`
+**Cause :** Le shell bash fourni par Claude Code sur Windows (Git Bash/MSYS2) n'a pas `make` dans le PATH.
+**Résolution :** Utilisation directe de `nvcc` en bash, en contournant le Makefile.
+
+### 2. `run_tests.ps1` — erreur d'encodage PowerShell
+**Symptôme :** `Le terminateur " est manquant dans la chaîne` à la ligne 212
+**Cause :** Le script utilise des caractères box-drawing Unicode (`─`, `═`) dans des commentaires. Lorsque PowerShell est invoqué depuis bash via `powershell.exe -File`, l'encodage est corrompu et les `─` sont interprétés comme des guillemets ouvrants `"` sans fermeture.
+**Résolution :** Abandon du script PS1, compilation manuelle via les commandes `nvcc`.
+
+### 3. `cl.exe` introuvable
+**Symptôme :** `nvcc fatal: Cannot find compiler 'cl.exe' in PATH`
+**Cause :** nvcc sur Windows nécessite le compilateur MSVC (`cl.exe`), absent du PATH bash.
+**Résolution :** Ajout manuel de `C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\bin\Hostx64\x64` au PATH.
+
+### 4. `fprintf`/`stderr` indéfinis dans `scan1d.cu`
+**Symptôme :** `error: identifier "stderr" is undefined` (4 erreurs, lignes 266-267)
+**Cause :** La macro `OM_CHECK` dans `optimatrix.h` utilise `fprintf(stderr, ...)` mais le header n'incluait pas `<stdio.h>`.
+**Modification :** Ajout de `#include <stdio.h>` dans `include/optimatrix.h`.
+
+### 5. Erreur de linkage `om_mamba_block_forward` (LNK2019)
+**Symptôme :** `symbole externe non résolu om_mamba_block_forward`
+**Cause :** `test_mamba_block.cu` déclare la fonction `extern "C"` (linkage C, sans name mangling), mais `src/mamba_block.cu` la définit sans `extern "C"` → le compilateur C++ génère un symbole mangle, invisible pour le test.
+**Modification :** Ajout de `extern "C"` sur la définition dans `src/mamba_block.cu`.
+
+### 6. Scan 1D : 0/5 FAIL (bug de correctness)
+**Symptôme :** Erreurs entre 0.066 et 1.21 — trop grandes pour être de la précision float.
+**Statut :** Bug dans l'implémentation (Blelloch ou séquentiel), non corrigé dans cette session. À investiguer.
+
+### 7. Scan 2D : 4/16 FAIL à partir de `16x16 D=32 M=8`
+**Symptôme :** `max_err ≈ 1.5` pour les 4 stratégies simultanément à cette taille, OK pour les plus petites.
+**Statut :** Erreur numérique qui explose à partir d'une certaine taille — probablement un débordement de shared memory, un index out-of-bounds, ou une race condition. Non corrigé.
+
+---
+
+Les 2 bugs restants (Scan 1D et Scan 2D grandes tailles) sont des bugs de logique dans les kernels.
