@@ -139,7 +139,7 @@ static void free_workspace(MambaWorkspace *ws)
  * p     : parametres (poids sur device)
  */
 
-void om_mamba_block_forward(
+extern "C" void om_mamba_block_forward(
     const float *d_x_in, float *d_y_out,
     const MambaParams *p)
 {
@@ -152,7 +152,6 @@ void om_mamba_block_forward(
     MambaWorkspace ws = alloc_workspace(L, D, M);
 
     int blocks_LD  = (L * D     + 255) / 256;
-    int blocks_LDM = (L * D * M + 255) / 256;
 
     /* ── Etape 1 : projection entree x_in -> xz ─────────────────── */
     /*
