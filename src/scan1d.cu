@@ -43,6 +43,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
+#include <stdio.h>
 #include "optimatrix.h"
 #include <math.h>
 

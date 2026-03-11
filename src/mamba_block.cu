@@ -35,6 +35,7 @@
  *   K    : taille noyau conv1d
  */
 
+#include <stdio.h>
 #include "optimatrix.h"
 #include <math.h>
 
