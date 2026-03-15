@@ -6,6 +6,7 @@
 #   make test2          Phase 2 : GEMV + GEMM
 #   make test3          Phase 3 : Conv1D + Scan 1D
 #   make test_scan2d    Phase 4 : Scan 2D (4 strategies)
+#   make test6          Phase 6 : Backward (Scan 1D)
 #   make tests          Toutes les phases
 #   make clean          Nettoyer
 #
@@ -27,15 +28,22 @@ OBJ_HAD    = $(OBJDIR)/hadamard.o
 OBJ_GEMM   = $(OBJDIR)/gemm.o
 OBJ_CONV   = $(OBJDIR)/conv1d.o
 OBJ_S1D    = $(OBJDIR)/scan1d.o
-OBJ_MAMBA  = $(OBJDIR)/mamba_block.o
 OBJ_NAIVE  = $(OBJDIR)/scan2d_naive.o
 OBJ_NVEC   = $(OBJDIR)/scan2d_naive_vec.o
 OBJ_COOP   = $(OBJDIR)/scan2d_coop.o
 OBJ_TILED  = $(OBJDIR)/scan2d_tiled.o
 
+# ── Phase 6 : Backward ───────────────────────────────────────────────
+OBJ_GEMM_B = $(OBJDIR)/gemm_backward.o
+OBJ_ACT_B  = $(OBJDIR)/activations_backward.o
+OBJ_CONV_B = $(OBJDIR)/conv1d_backward.o
+OBJ_S1D_B  = $(OBJDIR)/scan1d_backward.o
+
 OBJS_ALL   = $(OBJ_ACT) $(OBJ_HAD) $(OBJ_GEMM) \
-             $(OBJ_CONV) $(OBJ_S1D) $(OBJ_MAMBA) \
-             $(OBJ_NAIVE) $(OBJ_NVEC) $(OBJ_COOP) $(OBJ_TILED)
+             $(OBJ_CONV) $(OBJ_S1D) \
+             $(OBJ_NAIVE) $(OBJ_NVEC) $(OBJ_COOP) $(OBJ_TILED) \
+             $(OBJ_GEMM_B) $(OBJ_ACT_B) $(OBJ_CONV_B) \
+             $(OBJ_S1D_B)
 
 # ── Regles de compilation ───────────────────────────────────────────
 
@@ -59,9 +67,6 @@ $(OBJ_CONV): src/conv1d.cu include/optimatrix.h | $(OBJDIR)
 $(OBJ_S1D): src/scan1d.cu include/optimatrix.h | $(OBJDIR)
 	$(NVCC) $(CFLAGS) -c $< -o $@
 
-$(OBJ_MAMBA): src/mamba_block.cu include/optimatrix.h | $(OBJDIR)
-	$(NVCC) $(CFLAGS) -c $< -o $@
-
 $(OBJ_NAIVE): src/scan2d/naive/scan2d_naive.cu include/optimatrix.h | $(OBJDIR)
 	$(NVCC) $(CFLAGS) -c $< -o $@
 
@@ -72,6 +77,18 @@ $(OBJ_COOP): src/scan2d/coop/scan2d_coop.cu include/optimatrix.h | $(OBJDIR)
 	$(NVCC) $(CFLAGS) -rdc=true -c $< -o $@
 
 $(OBJ_TILED): src/scan2d/tiled/scan2d_tiled.cu include/optimatrix.h | $(OBJDIR)
+	$(NVCC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_GEMM_B): src/gemm_backward.cu include/optimatrix.h | $(OBJDIR)
+	$(NVCC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_ACT_B): src/activations_backward.cu include/optimatrix.h | $(OBJDIR)
+	$(NVCC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_CONV_B): src/conv1d_backward.cu include/optimatrix.h | $(OBJDIR)
+	$(NVCC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_S1D_B): src/scan1d_backward.cu include/optimatrix.h | $(OBJDIR)
 	$(NVCC) $(CFLAGS) -c $< -o $@
 
 # ── Phase 1 : Activations + Hadamard ────────────────────────────────
@@ -127,24 +144,22 @@ test_scan2d: $(OBJDIR)/test_scan2d
 $(OBJDIR)/test_scan2d: tests/test_scan2d.cu $(SCAN2D_OBJS) | $(OBJDIR)
 	$(NVCC) $(CFLAGS) -rdc=true $< $(SCAN2D_OBJS) -lcudadevrt -o $@
 
-# ── Toutes les phases ───────────────────────────────────────────────
+# ── Phase 6 : Backward ───────────────────────────────────────────────
 
-MAMBA_OBJS = $(OBJ_ACT) $(OBJ_HAD) $(OBJ_GEMM) \
-             $(OBJ_CONV) $(OBJ_S1D) $(OBJ_MAMBA)
-
-test5: $(OBJDIR)/test_mamba_block
+test6: $(OBJDIR)/test_scan1d_backward
 	@echo ""
-	@echo "─── Phase 5 : MambaBlock forward complet ───"
-	./$(OBJDIR)/test_mamba_block
+	@echo "─── Phase 6 : Backward — Scan1D ───"
+	./$(OBJDIR)/test_scan1d_backward
 
-$(OBJDIR)/test_mamba_block: tests/test_mamba_block.cu $(MAMBA_OBJS) | $(OBJDIR)
-	$(NVCC) $(CFLAGS) $< $(MAMBA_OBJS) -o $@
+$(OBJDIR)/test_scan1d_backward: tests/test_scan1d_backward.cu \
+	$(OBJ_S1D) $(OBJ_S1D_B) | $(OBJDIR)
+	$(NVCC) $(CFLAGS) $< $(OBJ_S1D) $(OBJ_S1D_B) -o $@
 
-tests: test1 test2 test3 test_scan2d test5
+tests: test1 test2 test3 test_scan2d test6
 
 # ── Clean ────────────────────────────────────────────────────────────
 
 clean:
 	rm -rf $(OBJDIR)
 
-.PHONY: all clean test1 test2 test3 test_scan2d tests
+.PHONY: all clean test1 test2 test3 test_scan2d test6 tests

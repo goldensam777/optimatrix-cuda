@@ -214,10 +214,10 @@ __global__ void scan1d_blelloch_kernel(
             sa[j] = old_ai;
             sb[j] = old_bi;
 
-            /* L'enfant droit = (tmp_a, tmp_b) ⊗ (old_ai, old_bi)          */
+            /* L'enfant droit = (old_ai, old_bi) ⊗ (tmp_a, tmp_b)          */
             /* operateur : (a1,b1) ⊗ (a2,b2) = (a1*a2, a2*b1 + b2)        */
-            sa[i] = tmp_a * old_ai;
-            sb[i] = old_ai * tmp_b + old_bi; /* old_ai, pas sa[i] deja mis a jour */
+            sa[i] = old_ai * tmp_a;
+            sb[i] = tmp_a * old_bi + tmp_b;
         }
         __syncthreads();
     }

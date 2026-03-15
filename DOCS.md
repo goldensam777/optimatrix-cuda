@@ -122,7 +122,7 @@ Memoire : O(m*k + k*n + m*n)
 
 ### Description
 `Z = X * Y` — multiplication terme a terme sur tenseurs de meme forme.
-Utilise dans la gate de Mamba : `y = x * silu(z)`
+Utilise notamment dans des gates : `y = x * silu(z)`
 
 ### Complexite
 ```
@@ -160,61 +160,10 @@ Diagonale 2 : h(2,0), h(1,1), h(0,2)   — independantes
 Trois specialisations :
 - `scan1d_backward` generique sur `[L, D, M]`
 - `M=1` specialise
-- `M=1` avec `B/C` partages et `delta[t]` scalaire (chemin chaud Mamba)
 
 ---
 
-## 6. MambaBlock — Bloc SSM complet
-
-### Description
-Implementation complete du bloc Mamba :
-- Projections W_in (dim -> state_size) et W_out (state_size -> dim)
-- A diagonal (log-parametrise), B/C partages
-- Delta input-dependant via delta_proj + softplus
-- Scan selectif 1D ou 2D (wavefront ASM)
-- Backward complet avec accumulation des gradients
-- Optimiseur MUONCLIP integre
-
-### Lifecycle
-```c
-MambaBlock *b = mamba_block_create(&config);
-mamba_block_init(b);                    // Xavier init, A_log spacing
-
-// Entrainement
-mamba_attach_optimizer(b, &opt_cfg);
-mamba_block_forward(b, out, in, batch); // ou forward_2d
-mamba_backward(b, dY, in, din, 0);     // ou backward_2d
-mamba_optimizer_step(b, &opt_cfg);
-
-mamba_block_free(b);
-```
-
-### Forward 1D
-```
-x_t -> W_in -> SiLU -> u_t (controleur)
-x_t -> delta_proj -> softplus -> clamp -> dt_t
-scan1d(u, A_log, B, C, delta) -> h_t
-h_t -> W_out -> y_t
-```
-
-### Forward 2D
-```
-Meme pipeline, mais scan2d (wavefront) au lieu de scan1d.
-Positions P = d1 * d2 traitees par diagonales anti.
-```
-
-### Backward
-- Recompute le forward (store intermediaires)
-- Backprop W_out -> scan backward -> SiLU backward -> W_in
-- Accumule gradients dans MBOptimState
-
-### OpenMP
-Les boucles du forward store (`selective_scan_forward_store`) sont
-parallelisables via `#pragma omp parallel for` (protege par `#ifdef _OPENMP`).
-
----
-
-## 7. Activations
+## 6. Activations
 
 ### SiLU (Swish)
 ```

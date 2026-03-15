@@ -17,8 +17,7 @@ Commande   : `make clean && make tests ARCH=sm_75`
 | 3 | Conv1D depthwise causale | 5/5 | OK |
 | 3 | Selective Scan 1D (Blelloch) | 5/5 | OK |
 | 4 | Selective Scan 2D — 4 stratégies | 16/16 | OK |
-| 5 | MambaBlock forward complet | 3/3 | OK |
-| **Total** | | **41/41** | **OK** |
+| **Total** | | **38/38** | **OK** |
 
 ---
 
@@ -156,28 +155,10 @@ en AVX2).
 
 ---
 
-## Phase 5 — MambaBlock forward complet
-
-```
-=== TEST MambaBlock forward complet ===
-  MambaBlock L=8    dim=16  D=8   M=4  K=2 : max_err=2.17e-06  OK
-  MambaBlock L=16   dim=32  D=16  M=8  K=4 : max_err=4.58e-05  OK
-  MambaBlock L=32   dim=64  D=32  M=8  K=4 : max_err=4.04e-04  OK
-3/3 tests OK
-```
-
-Pipeline complet (7 étapes) vérifié contre référence CPU :
-W_in → SiLU → Conv1D → dt/B/C → scan1D → gating → W_out.
-
-L'erreur augmente avec la taille (accumulation sur 7 étapes), mais reste sous la
-tolérance fixée à 1e-2. Normal pour un pipeline en float32.
-
----
-
 ## Notes techniques
 
-- Tolérance `TOL = 1e-2` pour MambaBlock (pipeline multi-étapes), `1e-4` pour les
-  modules individuels.
+- Tolérances : `~1e-4` pour les modules individuels ; `~1e-3` à `~1e-2` pour des
+  pipelines multi-étapes en float32.
 - Valeurs de A contraintes à [-3.0, -1.4] pour les tests 2D (stabilité numérique :
   garantit `a1 + a2 < 1` dans la récurrence 2D).
 - Scan 1D : bascule automatique Blelloch (L ≤ 1024) / séquentiel (L > 1024).

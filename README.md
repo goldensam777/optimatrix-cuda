@@ -1,6 +1,7 @@
 # optimatrix-cuda
 
-Implémentation CUDA custom du selective scan 2D wavefront pour l'architecture Mamba.
+Implémentation CUDA custom de primitives de calcul :
+activations, GEMM/GEMV, Conv1D depthwise causale, selective scan 1D et scan 2D wavefront.
 Port GPU du projet [optimatrix](https://github.com/goldensam777/optimatrix) (ASM x86-64 / AVX2).
 
 > Projet de recherche — Samuel Yevi, IFRI-UAC, L1 Systèmes Embarqués
@@ -20,7 +21,6 @@ Port GPU du projet [optimatrix](https://github.com/goldensam777/optimatrix) (ASM
 | Selective Scan 2D — naive\_vec | Vectorisé sur M + warp shuffle | ✅ |
 | Selective Scan 2D — coop | Persistent kernel + `grid.sync()` | ✅ |
 | Selective Scan 2D — tiled | Wavefront par tuiles 8×8 | ✅ |
-| MambaBlock forward | Pipeline complet | ✅ |
 
 ---
 
@@ -67,7 +67,6 @@ src/
   gemm.cu                 # GEMV + GEMM tiled
   conv1d.cu               # Conv1D depthwise causale
   scan1d.cu               # Selective scan 1D (Blelloch)
-  mamba_block.cu          # MambaBlock forward complet
   scan2d/
     naive/                # A  — 1 kernel/diagonale
     naive_vec/            # A' — vectorisé sur M + warp reduction
@@ -82,7 +81,6 @@ tests/
   test_conv1d.cu
   test_scan1d.cu
   test_scan2d.cu          # Correctness + benchmark des 4 stratégies
-  test_mamba_block.cu
 results/                  # Rapports de tests générés
 RESEARCH.md               # Pistes de recherche : scan 2D en O(log N)
 ```

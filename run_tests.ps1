@@ -135,7 +135,6 @@ $allOk = $allOk -and (Invoke-Compile "hadamard"          "$NVCC $CFLAGS -c src/h
 $allOk = $allOk -and (Invoke-Compile "gemm"              "$NVCC $CFLAGS -c src/gemm.cu        -o $OBJDIR/gemm.o")
 $allOk = $allOk -and (Invoke-Compile "conv1d"            "$NVCC $CFLAGS -c src/conv1d.cu      -o $OBJDIR/conv1d.o")
 $allOk = $allOk -and (Invoke-Compile "scan1d"            "$NVCC $CFLAGS -c src/scan1d.cu      -o $OBJDIR/scan1d.o")
-$allOk = $allOk -and (Invoke-Compile "mamba_block"       "$NVCC $CFLAGS -c src/mamba_block.cu -o $OBJDIR/mamba_block.o")
 $allOk = $allOk -and (Invoke-Compile "scan2d/naive"      "$NVCC $CFLAGS -c src/scan2d/naive/scan2d_naive.cu             -o $OBJDIR/scan2d_naive.o")
 $allOk = $allOk -and (Invoke-Compile "scan2d/naive_vec"  "$NVCC $CFLAGS -c src/scan2d/naive_vec/scan2d_naive_vec.cu     -o $OBJDIR/scan2d_naive_vec.o")
 $allOk = $allOk -and (Invoke-Compile "scan2d/coop"       "$NVCC $CFLAGS -rdc=true -c src/scan2d/coop/scan2d_coop.cu    -o $OBJDIR/scan2d_coop.o")
@@ -156,7 +155,6 @@ Write-SubSep
 
 $p1_objs    = "$OBJDIR/activations.o $OBJDIR/hadamard.o"
 $p3_objs    = "$OBJDIR/conv1d.o $OBJDIR/scan1d.o"
-$mamba_objs = "$OBJDIR/activations.o $OBJDIR/hadamard.o $OBJDIR/gemm.o $OBJDIR/conv1d.o $OBJDIR/scan1d.o $OBJDIR/mamba_block.o"
 $scan2d_objs = "$OBJDIR/scan2d_naive.o $OBJDIR/scan2d_naive_vec.o $OBJDIR/scan2d_coop.o $OBJDIR/scan2d_tiled.o"
 
 Invoke-Link "test_activations" "$NVCC $CFLAGS tests/test_activations.cu $OBJDIR/activations.o -o $OBJDIR/test_activations.exe" "$OBJDIR/test_activations.exe" | Out-Null
@@ -164,7 +162,6 @@ Invoke-Link "test_hadamard"    "$NVCC $CFLAGS tests/test_hadamard.cu    $OBJDIR/
 Invoke-Link "test_gemm"        "$NVCC $CFLAGS tests/test_gemm.cu        $OBJDIR/gemm.o        -o $OBJDIR/test_gemm.exe"        "$OBJDIR/test_gemm.exe"        | Out-Null
 Invoke-Link "test_conv1d"      "$NVCC $CFLAGS tests/test_conv1d.cu      $OBJDIR/conv1d.o      -o $OBJDIR/test_conv1d.exe"      "$OBJDIR/test_conv1d.exe"      | Out-Null
 Invoke-Link "test_scan1d"      "$NVCC $CFLAGS tests/test_scan1d.cu      $OBJDIR/scan1d.o      -o $OBJDIR/test_scan1d.exe"      "$OBJDIR/test_scan1d.exe"      | Out-Null
-Invoke-Link "test_mamba_block" "$NVCC $CFLAGS tests/test_mamba_block.cu $mamba_objs           -o $OBJDIR/test_mamba_block.exe" "$OBJDIR/test_mamba_block.exe" | Out-Null
 Invoke-Link "test_scan2d"      "$NVCC $CFLAGS -rdc=true tests/test_scan2d.cu $scan2d_objs -lcudadevrt -o $OBJDIR/test_scan2d.exe" "$OBJDIR/test_scan2d.exe"  | Out-Null
 
 if ($LinkErrors -gt 0) {
@@ -186,7 +183,6 @@ Invoke-Test "Phase 2  — GEMV + GEMM"     "$OBJDIR/test_gemm.exe"
 Invoke-Test "Phase 3A — Conv1D"          "$OBJDIR/test_conv1d.exe"
 Invoke-Test "Phase 3B — Scan 1D"        "$OBJDIR/test_scan1d.exe"
 Invoke-Test "Phase 4  — Scan 2D (x4)"   "$OBJDIR/test_scan2d.exe"
-Invoke-Test "Phase 5  — MambaBlock fwd" "$OBJDIR/test_mamba_block.exe"
 
 # ── Resume final ──────────────────────────────────────────────────────
 
